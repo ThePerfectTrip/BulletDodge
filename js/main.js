@@ -15,10 +15,12 @@ var lives;
 var lives2;
 var health_amount;
 var enemy_health;
+var ammo_amount;
+var eammo_amount;
 
 // pickup properties
-var hp_box;
 var hp_box_timer;
+var life_box_timer;
 var ewalking;
 var walking;
 var game_over;
@@ -29,6 +31,8 @@ let shootSound;
 let hurtSound;
 let laserSound;
 let healthSound;
+let lifeSound;
+let reloadSound;
 
     function stopBGAudio() {
         bgAudio.pause();
@@ -45,11 +49,19 @@ function startGame() {
     Arena.start();
     playBGAudio();
 
+    var life = new Image();
+    life.src = "media/life_box.png";
+
     var hp = new Image();
     hp.src = "media/health_box.png";
 
+    var ammo = new Image();
+    ammo.src = "media/ammo_box.png";
+
     // load pickups
     hp_box = new itembox(hp, -300, -300);
+    life_box = new itembox(life, -300, -300);
+    ammo_box = new itembox(ammo, -300, -300);
 
     // load players
     player = new sprite(gunner_sprite, 189, 187, 80, 80);
@@ -104,6 +116,10 @@ var Arena = {
         timer();
         health_amount = 100;
         enemy_health = 100;
+        ammo_amount = 30;
+        eammo_amount = 30;
+        bullets = 1;
+        ebullets = 1;
         shooting = 0;
         eshooting = 0;
         hurting = 0;
@@ -116,6 +132,8 @@ var Arena = {
         document.getElementById("Lives2").innerText = lives2;
         document.getElementById("h8").style.display = "none";
         document.getElementById("h9").style.display = "none";
+        document.getElementById("Ammo").innerText = ammo_amount;
+        document.getElementById("Ammo2").innerText = eammo_amount;
         bgAudio = document.querySelector("#bgAudio");
         bgAudio.volume = 0.50;
         this.canvas.width = 1280;
@@ -137,10 +155,14 @@ var Arena = {
 	        src: ['media/bullet_fire.mp3']
 });
 
+    reloadSound = new Howl({
+	        src: ['media/reload.mp3']
+});
+    // Hurt
     hurtSound = new Howl({
 	        src: ['media/hurt.mp3']
 });
-
+    // Laser
     laserSound = new Howl({
 	        src: ['media/laser.mp3']
 });
@@ -150,6 +172,10 @@ var Arena = {
 	        src: ['media/health_pickup.mp3']
 });
 
+    // Life
+    lifeSound = new Howl({
+	        src: ['media/yeah.mp3']
+});
 
     }, 
     clear : function(){
@@ -160,6 +186,21 @@ var Arena = {
 // set intervals for enemy fire and item boxes
 function timer() {
     hp_box_timer = setInterval(healthBox, 9000);
+    life_box_timer = setInterval(lifeBox, 9000);
+    ammo_box_timer = setInterval(ammoBox, 9000);
+}
+
+// boxes moves around constantly to avoid getting stuck on crates or holes
+function lifeBox() {
+    // health box
+    if(lives < 4 || lives2 < 4){
+        life_box.x = Math.floor(Math.random() * 1600) + 1;
+        life_box.y = Math.floor(Math.random() * 600) + 1;
+        }
+    else {
+        life_box.x = -300;
+        life_box.y = -300;
+     }
 }
 
 
@@ -167,13 +208,26 @@ function timer() {
 function healthBox() {
     // health box
     if(health_amount || enemy_health != 100){
-        hp_box.x = Math.floor(Math.random() * 1270) + 1;
-        hp_box.y = Math.floor(Math.random() * 710) + 1;
+        hp_box.x = Math.floor(Math.random() * 1600) + 1;
+        hp_box.y = Math.floor(Math.random() * 600) + 1;
         }
     else if (health_amount || enemy_health == 100){
         hp_box.x = -300;
         hp_box.y = -300;
         }
+}
+
+// boxes moves around constantly to avoid getting stuck on crates or holes
+function ammoBox() {
+    // health box
+    if(ammo_amount < 30 || eammo_amount < 30){
+        ammo_box.x = Math.floor(Math.random() * 1600) + 1;
+        ammo_box.y = Math.floor(Math.random() * 600) + 1;
+        }
+    else {
+        ammo_box.x = -300;
+        ammo_box.y = -300;
+     }
 }
 
 function component(width, height, color, x, y, distance) {
@@ -297,6 +351,46 @@ function setBoundaries(){
         document.getElementById("health").value = enemy_health;
         hp_box.x = hp_box.x = -300;
         healthSound.play();
+    }
+
+    // life box
+    if (life_box.x > player_hit_box.x && life_box.x < (player_hit_box.x + 70) && life_box.y > player_hit_box.y && life_box.y < (player_hit_box.y + 187)) {
+        lives = lives + 1;
+        document.getElementById("Lives").innerText = lives;
+        life_box.x = life_box.x = -300;
+        lifeSound.play();
+    }
+    if (life_box.x > player.x && life_box.x < (player.x + 189) && life_box.y > player.y && life_box.y < (player.y + 187)) {
+        lives = lives + 1;
+        document.getElementById("Lives").innerText = lives;
+        life_box.x = life_box.x = -300;
+        lifeSound.play();
+    }
+    if (life_box.x > enemy.x && life_box.x < (enemy.x + 189) && life_box.y > enemy.y && life_box.y < (enemy.y + 187)) {
+        lives2 = lives2 + 1;
+        document.getElementById("Lives2").innerText= lives2;
+        life_box.x = life_box.x = -300;
+        lifeSound.play();
+    }
+
+    // ammo box
+    if (ammo_box.x > player_hit_box.x && ammo_box.x < (player_hit_box.x + 70) && ammo_box.y > player_hit_box.y && ammo_box.y < (player_hit_box.y + 187)) {
+        ammo_amount = ammo_amount + 10;
+        document.getElementById("Ammo").innerText = ammo_amount;
+        ammo_box.x = ammo_box.x = -300;
+        reloadSound.play();
+    }
+    if (ammo_box.x > player.x && ammo_box.x < (player.x + 189) && ammo_box.y > player.y && ammo_box.y < (player.y + 187)) {
+        ammo_amount = ammo_amount + 10;
+        document.getElementById("Ammo").innerText = ammo_amount;
+        ammo_box.x = ammo_box.x = -300;
+        reloadSound.play();
+    }
+    if (ammo_box.x > enemy.x && ammo_box.x < (enemy.x + 189) && ammo_box.y > enemy.y && ammo_box.y < (enemy.y + 187)) {
+        eammo_amount = eammo_amount + 10;
+        document.getElementById("Ammo2").innerText = eammo_amount;
+        ammo_box.x = ammo_box.x = -300;
+        reloadSound.play();
     }
 
     // front wall
@@ -519,7 +613,7 @@ function updateGameArena() {
     if (Arena.keys && Arena.keys[68] && lives >= 0) {player.speedX = 4;bullet.speedX = 4;player_hit_box.speedX = 4;g_pos.speedX = 4;walking = 2;}
     if (Arena.keys && Arena.keys[87] && lives >= 0) {player.speedY = -4;bullet.speedY = -4;player_hit_box.speedY = -4;g_pos.speedY = -4;walking = 1;}
     if (Arena.keys && Arena.keys[83] && lives >= 0) {player.speedY = 4;bullet.speedY = 4;player_hit_box.speedY = 4;g_pos.speedY = 4;walking = 2;}
-    if (Arena.keys && Arena.keys[32] && lives >= 0 && bullet.distance == 0) {bullet.y = g_pos.y; bullet.x = g_pos.x; shootSound.play(); shooting = 1;}
+    if (Arena.keys && Arena.keys[32] && lives >= 0 && bullet.distance == 0 && bullets == 1) {bullet.y = g_pos.y; bullet.x = g_pos.x; shootSound.play(); shooting = 1; document.getElementById("Ammo").innerText = ammo_amount - 1; ammo_amount = ammo_amount - 1;}
 
 
     if (walking == 1 && player.speedX == -4 || player.speedY == -4){
@@ -543,13 +637,35 @@ function updateGameArena() {
                 }
         }
 
+    // change hud ammo color if getting low to dark red
+    if (ammo_amount == 15)
+        {
+            document.getElementById("Ammo").style.color = "#a81515";
+        }
+    // change hud ammo color back to green 
+    if (ammo_amount >= 16)
+        {
+            document.getElementById("Ammo").style.color = "green";
+        }
+
+    // stop shooting if you run out of ammo
+    if (ammo_amount == 0)
+        {
+            bullets = 0;
+        }
+    // start shooting again if you have ammo
+    if (ammo_amount > 0)
+        {
+            bullets = 1;
+        }
+
     // controls for foe
     // Uses numpad 8456 for movement and down arrow for fire
     if (Arena.keys && Arena.keys[100] && lives2 >= 0) {enemy.speedX = -4; ebullet.speedX = -4;e_g_pos.speedX = -4; ewalking = 1;}
     if (Arena.keys && Arena.keys[102] && lives2 >= 0) {enemy.speedX = 4; ebullet.speedX = 4;e_g_pos.speedX = 4;ewalking = 2;}
     if (Arena.keys && Arena.keys[104] && lives2 >= 0) {enemy.speedY = -4; ebullet.speedY = -4;e_g_pos.speedY = -4;ewalking = 1;}
     if (Arena.keys && Arena.keys[101] && lives2 >= 0) {enemy.speedY = 4; ebullet.speedY = 4;e_g_pos.speedY = 4;ewalking = 2;}
-    if (Arena.keys && Arena.keys[40]  && lives2 >= 0 && ebullet.distance == 0) {ebullet.y = e_g_pos.y; ebullet.x = e_g_pos.x; shootSound.play();eshooting = 1;}
+    if (Arena.keys && Arena.keys[40]  && lives2 >= 0 && ebullet.distance == 0 && ebullets == 1) {ebullet.y = e_g_pos.y; ebullet.x = e_g_pos.x; shootSound.play();eshooting = 1; document.getElementById("Ammo2").innerText = eammo_amount - 1; eammo_amount = eammo_amount - 1;}
 
     if (ewalking == 1 && enemy.speedX == -4 || enemy.speedY == -4){
                         enemy.img = gunner_sprite2_walk_1;
@@ -573,7 +689,29 @@ function updateGameArena() {
                 }
         }
 
-    // update positions
+    // change hud ammo color if getting low to dark red
+    if (eammo_amount == 15)
+        {
+            document.getElementById("Ammo2").style.color = "#a81515";
+        }
+    // change hud ammo color back to green 
+    if (eammo_amount >= 16)
+        {
+            document.getElementById("Ammo2").style.color = "green";
+        }
+
+    // stop shooting if you run out of ammo
+    if (eammo_amount == 0)
+        {
+            ebullets = 0;
+        }
+    // start shooting again if you have ammo
+    if (eammo_amount > 0)
+        {
+            ebullets = 1;
+        }
+
+    // update positions4854848
     player.newPos();
     player_hit_box.newPos();
     enemy.newPos();
@@ -606,4 +744,8 @@ function updateGameArena() {
     // itembox new position and updates
     hp_box.newPos();
     hp_box.update();
+    life_box.newPos();
+    life_box.update();
+    ammo_box.newPos();
+    ammo_box.update();
 }
