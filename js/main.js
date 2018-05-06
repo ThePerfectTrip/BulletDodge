@@ -541,7 +541,10 @@ function hitDetection (){
     // Game Over Player 2
     if (lives2 <= 0)
         {
+            document.getElementById("h7").style.display = "none";
             document.getElementById("h9").style.display = "block";
+            document.getElementById("h11").style.display = "none";
+            document.getElementById("Ammo2").style.display = "none";
             document.getElementById("Lives2").innerText = "0";  
                 enemy_health = 0;
                 enemy.x = -300;
@@ -574,6 +577,9 @@ else   {
     if (lives <= 0)
         {
             document.getElementById("h8").style.display = "block";
+            document.getElementById("h6").style.display = "none";
+            document.getElementById("h10").style.display = "none";
+            document.getElementById("Ammo").style.display = "none";
             document.getElementById("Lives").innerText = "0";  
                 health_amount = 0;
                 player.x = -300;
