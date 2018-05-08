@@ -1,4 +1,5 @@
 // player properties
+var eyes;
 var player;
 var player_hit_box;
 var enemy;
@@ -7,10 +8,12 @@ var e_g_pos;
 
 // projectile properties
 var bullet;
+var shell;
 var ebullet;
 var laser;
 
 // misc properties
+var game;
 var lives;
 var lives2;
 var health_amount;
@@ -19,8 +22,6 @@ var ammo_amount;
 var eammo_amount;
 
 // pickup properties
-var hp_box_timer;
-var life_box_timer;
 var ewalking;
 var walking;
 var game_over;
@@ -33,6 +34,7 @@ let laserSound;
 let healthSound;
 let lifeSound;
 let reloadSound;
+let noAmmoSound;
 
     function stopBGAudio() {
         bgAudio.pause();
@@ -47,33 +49,33 @@ let reloadSound;
 
 function startGame() {
     Arena.start();
-    playBGAudio();
-
-    var life = new Image();
-    life.src = "media/life_box.png";
-
+    // load pickups
     var hp = new Image();
     hp.src = "media/health_box.png";
-
+    var life = new Image();
+    life.src = "media/life_box.png";
     var ammo = new Image();
     ammo.src = "media/ammo_box.png";
-
-    // load pickups
+    var p_shotgun = new Image();
+    p_shotgun.src = "media/shotgun.png";
     hp_box = new itembox(hp, -300, -300);
     life_box = new itembox(life, -300, -300);
     ammo_box = new itembox(ammo, -300, -300);
+    shotgun_pickup = new weapon(p_shotgun, -300, -300);
 
     // load players
-    player = new sprite(gunner_sprite, 189, 187, 80, 80);
-    enemy = new sprite(gunner_sprite2, 189, 187, 1000, 400);
+    eyes = new sprite(eyes_open, 90, 186, -300, -300);
+    player = new sprite(gunner_sprite, 189, 187, -1000, -1000);
+    enemy = new sprite(gunner_sprite2, 189, 187, -1000, -1000);
     player_hit_box = new component(70, 187,"rgba(255,0,0,0)", 105, 80);
 
     // load projectiles
     g_pos = new component(5, 5,"rgba(0,255,0,0)", 228, 160);
     e_g_pos = new component(5, 5,"rgba(0,255,0,0)", 915, 480);
     bullet = new component(120, 2, "yellow", -120, -120, 0);
+    shell = new component(120, 2, "red", -120, -120, 0);
     ebullet = new component(120, 2, "yellow", -120, -120, 0);
-    laser = new component(20, 660,"rgba(0,255,0,0.4)", 630, 30);
+    laser = new component(20, 660,"rgba(0,255,0,0.4)", -300, -300);
 
     // load walls
     b_wall = new component(1224, 8,"rgba(255,0,0,0)", 28, 22);
@@ -87,8 +89,11 @@ var Arena = {
     canvas : document.createElement("canvas"),
     start : function() {
 
-
         // load player sprites
+        eyes_open = new Image();
+        eyes_open.src = "media/eyes.png";
+        blink = new Image();
+        blink.src = "media/blink.png";
         gunner_sprite = new Image();
         gunner_sprite.src = "media/player_1_r_with_gun.png";
         gunner_sprite_walk_1 = new Image();
@@ -97,6 +102,8 @@ var Arena = {
         gunner_sprite_walk_2.src = "media/player_1_r_with_gun_walk_2.png"
         gunner_sprite_shoot = new Image();
         gunner_sprite_shoot.src = "media/player_1_r_with_gun_shoot.png";
+        gunner_sprite_no_ammo = new Image();
+        gunner_sprite_no_ammo.src = "media/player_1_r_with_no_ammo.png";
         gunner_sprite_hurt = new Image();
         gunner_sprite_hurt.src = "media/player_1_r_with_gun_hurt.png";
         gunner_sprite_shoot_hurt = new Image();
@@ -112,16 +119,19 @@ var Arena = {
         player2_hurt_sprite = new Image();
         player2_hurt_sprite.src = "media/player_2_l_hurt.png";
 
-
-        timer();
+        game = 0;
         health_amount = 100;
         enemy_health = 100;
         ammo_amount = 30;
         eammo_amount = 30;
+        gunner = 1;
+        shotgun = 0;
         bullets = 1;
+        shells = 0;
         ebullets = 1;
         shooting = 0;
         eshooting = 0;
+        no_bullets = 0;
         hurting = 0;
         lives = 4;
         lives2 = 4;
@@ -138,6 +148,7 @@ var Arena = {
         bgAudio.volume = 0.50;
         this.canvas.width = 1280;
         this.canvas.height = 720;
+        this.canvas.id = "canvas";
         this.canvas.setAttribute('style', "position: absolute; left: 50%; margin-left: -650px; top: 50%; margin-top: -320px; border: 2px solid black");
         this.context = this.canvas.getContext("2d");
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
@@ -155,8 +166,14 @@ var Arena = {
 	        src: ['media/bullet_fire.mp3']
 });
 
+    // Reload
     reloadSound = new Howl({
 	        src: ['media/reload.mp3']
+});
+
+    // Reload
+    noAmmoSound = new Howl({
+	        src: ['media/no_ammo.mp3']
 });
     // Hurt
     hurtSound = new Howl({
@@ -183,11 +200,34 @@ var Arena = {
     }
 }
 
-// set intervals for enemy fire and item boxes
+// set timers
 function timer() {
     hp_box_timer = setInterval(healthBox, 9000);
     life_box_timer = setInterval(lifeBox, 9000);
     ammo_box_timer = setInterval(ammoBox, 9000);
+    shotgun_pickup_timer = setInterval(shotgunPick, 9000);
+    blink_timer = setInterval(eyesBlink, 2000);
+    eyes_open_timer = setInterval(eyesOpen, 300);
+}
+
+function shotgunPick(){
+    if(shotgun == 0){
+        shotgun_pickup.x = Math.floor(Math.random() * 1600) + 1;
+        shotgun_pickup.y = Math.floor(Math.random() * 600) + 1;
+        }
+    else {
+        shotgun_pickup.x = -300;
+        shotgun_pickup.y = -300;
+     }
+}
+
+// blinking eyes
+function eyesBlink() {
+    eyes.img = blink;
+}
+
+function eyesOpen() {
+    eyes.img = eyes_open;
 }
 
 // boxes moves around constantly to avoid getting stuck on crates or holes
@@ -202,7 +242,6 @@ function lifeBox() {
         life_box.y = -300;
      }
 }
-
 
 // boxes moves around constantly to avoid getting stuck on crates or holes
 function healthBox() {
@@ -303,13 +342,18 @@ function itembox(img, x, y) {
     }    
 }
 
-
 function playerDie()
 {
     health_amount = 100;
+    ammo_amount = 30;
+    document.getElementById("Ammo").innerText = ammo_amount;   
+    gunner = 1;
+    bullets = 1;
     document.getElementById("health").value = health_amount;
     player.x = 80;
     player.y = 80;
+    eyes.x = 80;
+    eyes.y = 80;
     player_hit_box.x = 105;
     player_hit_box.y = 80;
     g_pos.x = 228;
@@ -321,6 +365,9 @@ function playerDie()
 function enemyDie()
 {
     enemy_health = 100;
+    eammo_amount = 30;
+    ebullets = 1;
+    document.getElementById("Ammo2").innerText = eammo_amount;
     document.getElementById("ehealth").value = enemy_health;
     enemy.x = 1000;
     enemy.y = 400;
@@ -331,7 +378,6 @@ function enemyDie()
 }
 
 function setBoundaries(){
-
 
     // health box
     if (hp_box.x > player_hit_box.x && hp_box.x < (player_hit_box.x + 70) && hp_box.y > player_hit_box.y && hp_box.y < (player_hit_box.y + 187)) {
@@ -376,12 +422,14 @@ function setBoundaries(){
     // ammo box
     if (ammo_box.x > player_hit_box.x && ammo_box.x < (player_hit_box.x + 70) && ammo_box.y > player_hit_box.y && ammo_box.y < (player_hit_box.y + 187)) {
         ammo_amount = ammo_amount + 10;
+        gunner = 1;
         document.getElementById("Ammo").innerText = ammo_amount;
         ammo_box.x = ammo_box.x = -300;
         reloadSound.play();
     }
     if (ammo_box.x > player.x && ammo_box.x < (player.x + 189) && ammo_box.y > player.y && ammo_box.y < (player.y + 187)) {
         ammo_amount = ammo_amount + 10;
+        gunner = 1;
         document.getElementById("Ammo").innerText = ammo_amount;
         ammo_box.x = ammo_box.x = -300;
         reloadSound.play();
@@ -393,12 +441,33 @@ function setBoundaries(){
         reloadSound.play();
     }
 
+    // shotgun
+    if (shotgun_pickup.x > player_hit_box.x && shotgun_pickup.x < (player_hit_box.x + 70) && shotgun_pickup.y > player_hit_box.y && shotgun_pickup.y < (player_hit_box.y + 187)) {
+        shells = shells + 16;
+        shotgun = 1;
+        gunner = 0;
+        shotgun_pickup.x = shotgun_pickup.x = -300;
+        reloadSound.play();
+    }
+    if (shotgun_pickup.x > player.x && shotgun_pickup.x < (player.x + 189) && shotgun_pickup.y > player.y && shotgun_pickup.y < (player.y + 187)) {
+        shells = shells + 16;
+        shotgun = 1;
+        gunner = 0;
+        shotgun_pickup.x = shotgun_pickup.x = -300;
+        reloadSound.play();
+    }
     // front wall
     if (player.x < f_wall.x + f_wall.width &&
         player.x + player.width > f_wall.x &&
         player.y < f_wall.y + f_wall.height &&
         player.height + player.y > f_wall.y) {
         player.y = player.y - 4;
+    }
+    if (eyes.x < f_wall.x + f_wall.width &&
+        eyes.x + eyes.width > f_wall.x &&
+        eyes.y < f_wall.y + f_wall.height &&
+        eyes.height + eyes.y > f_wall.y) {
+        eyes.y = eyes.y - 4;
     }
     if (player_hit_box.x < f_wall.x + f_wall.width &&
         player_hit_box.x + player_hit_box.width > f_wall.x &&
@@ -431,6 +500,12 @@ function setBoundaries(){
         player.height + player.y > b_wall.y) {
         player.y = player.y + 4;
     }
+    if (eyes.x < b_wall.x + b_wall.width &&
+        eyes.x + eyes.width > b_wall.x &&
+        eyes.y < b_wall.y + b_wall.height &&
+        eyes.height + eyes.y > b_wall.y) {
+        eyes.y = eyes.y + 4;
+    }
     if (player_hit_box.x < b_wall.x + b_wall.width &&
         player_hit_box.x + player_hit_box.width > b_wall.x &&
         player_hit_box.y < b_wall.y + b_wall.height &&
@@ -457,6 +532,12 @@ function setBoundaries(){
         player.height + player.y > l_wall.y) {
         player.x = player.x + 4;
     }
+    if (eyes.x < l_wall.x + l_wall.width &&
+        eyes.x + eyes.width > l_wall.x &&
+        eyes.y < l_wall.y + l_wall.height &&
+        eyes.height + eyes.y > l_wall.y) {
+        eyes.x = eyes.x + 4;
+    }
     if (player_hit_box.x > l_wall.x && player_hit_box.x < (l_wall.x + 30) && player_hit_box.y > l_wall.y && player_hit_box.y < (l_wall.y + 674)) {
         player_hit_box.x = player_hit_box.x + 4;
     }
@@ -476,6 +557,12 @@ function setBoundaries(){
         player.y < r_wall.y + r_wall.height &&
         player.height + player.y > r_wall.y) {
         player.x = player.x - 4;
+    }
+    if (eyes.x < r_wall.x + r_wall.width &&
+        eyes.x + eyes.width > r_wall.x &&
+        eyes.y < r_wall.y + r_wall.height &&
+        eyes.height + eyes.y > r_wall.y) {
+        eyes.x = eyes.x - 4;
     }
     if (player_hit_box.x < r_wall.x + r_wall.width &&
         player_hit_box.x + player_hit_box.width > r_wall.x &&
@@ -546,9 +633,9 @@ function hitDetection (){
             document.getElementById("h11").style.display = "none";
             document.getElementById("Ammo2").style.display = "none";
             document.getElementById("Lives2").innerText = "0";  
-                enemy_health = 0;
-                enemy.x = -300;
-                enemy.y = -300;
+            enemy_health = 0;
+            enemy.x = -300;
+            enemy.y = -300;
         }
 
 
@@ -563,6 +650,7 @@ function hitDetection (){
         hurting = 1;
         player_hit_box.x = player_hit_box.x - 6;
         g_pos.x = g_pos.x - 6;
+        eyes.x = eyes.x - 6;
         player.img = gunner_sprite_hurt;
        }
 else   { 
@@ -581,14 +669,50 @@ else   {
             document.getElementById("h10").style.display = "none";
             document.getElementById("Ammo").style.display = "none";
             document.getElementById("Lives").innerText = "0";  
-                health_amount = 0;
-                player.x = -300;
-                player.y = -300;
+            health_amount = 0;
+            player.x = -300;
+            player.y = -300;
         }
+}
+
+function introEnd(){
+game = game + 1;
+playBGAudio();
+timer();
+player.x = 80;
+player.y = 80;
+eyes.x = 80;
+eyes.y = 80;
+enemy.x = 1000;
+enemy.y = 400;
+laser.x = 630;
+laser.y = 30;
+
+if (game == 1){
+document.getElementById("h1").style.display = "none";
+document.getElementById("Play").style.display = "none";
+document.getElementById("h2").style.display = "block";
+document.getElementById("h3").style.display = "block";
+document.getElementById("h4").style.display = "block";
+document.getElementById("h5").style.display = "block";
+document.getElementById("h6").style.display = "block";
+document.getElementById("h7").style.display = "block";
+document.getElementById("h10").style.display = "block";
+document.getElementById("h11").style.display = "block";
+document.getElementById("Ammo").style.display = "block";
+document.getElementById("Ammo2").style.display = "block";
+document.getElementById("Lives").style.display = "block";
+document.getElementById("Lives2").style.display = "block";
+document.getElementById("health").style.display = "block";
+document.getElementById("ehealth").style.display = "block";
+document.getElementById("canvas").style.display  = "block";
+document.body.style.backgroundColor = "#a2a5aa";
+ }
 }
 
 function updatePositions(){
     bullet.x += 200;
+    shell.x += 200;
     ebullet.x -= 200;
 }
 
@@ -597,6 +721,8 @@ function updateGameArena() {
     setBoundaries();
     updatePositions();
     hitDetection();
+    eyes.speedX = 0;
+    eyes.speedY = 0;
     player.speedX = 0;
     player.speedY = 0;
     player_hit_box.speedX = 0;
@@ -605,6 +731,8 @@ function updateGameArena() {
     enemy.speedY = 0;
     bullet.speedX = 0;
     bullet.speedY = 0;
+    shell.speedX = 0;
+    shell.speedY = 0;
     ebullet.speedX = 0;
     ebullet.speedY = 0;
     g_pos.speedX = 0;
@@ -612,14 +740,17 @@ function updateGameArena() {
     e_g_pos.speedX = 0;
     e_g_pos.speedY = 0;
 
+    if (Arena.keys && Arena.keys[13] && game == 0){introEnd();}
 
     // controls for player
     // Uses WASD for movement and space for fire
-    if (Arena.keys && Arena.keys[65] && lives >= 0) {player.speedX = -4;bullet.speedX = -4;player_hit_box.speedX = -4;g_pos.speedX = -4; walking = 1;}
-    if (Arena.keys && Arena.keys[68] && lives >= 0) {player.speedX = 4;bullet.speedX = 4;player_hit_box.speedX = 4;g_pos.speedX = 4;walking = 2;}
-    if (Arena.keys && Arena.keys[87] && lives >= 0) {player.speedY = -4;bullet.speedY = -4;player_hit_box.speedY = -4;g_pos.speedY = -4;walking = 1;}
-    if (Arena.keys && Arena.keys[83] && lives >= 0) {player.speedY = 4;bullet.speedY = 4;player_hit_box.speedY = 4;g_pos.speedY = 4;walking = 2;}
-    if (Arena.keys && Arena.keys[32] && lives >= 0 && bullet.distance == 0 && bullets == 1) {bullet.y = g_pos.y; bullet.x = g_pos.x; shootSound.play(); shooting = 1; document.getElementById("Ammo").innerText = ammo_amount - 1; ammo_amount = ammo_amount - 1;}
+    if (Arena.keys && Arena.keys[65] && game == 1 && lives >= 0) {player.speedX = -4;shell.speedX = -4;bullet.speedX = -4;eyes.speedX = -4;eyes.speedX = -4;player_hit_box.speedX = -4;g_pos.speedX = -4; walking = 1;}
+    if (Arena.keys && Arena.keys[68] && game == 1 && lives >= 0) {player.speedX = 4;shell.speedX = 4;bullet.speedX = 4;eyes.speedX = 4;eyes.speedX = 4;player_hit_box.speedX = 4;g_pos.speedX = 4;walking = 2;}
+    if (Arena.keys && Arena.keys[87] && game == 1 && lives >= 0) {player.speedY = -4;shell.speedY = -4;bullet.speedY = -4;eyes.speedY = -4;eyes.speedY = -4;player_hit_box.speedY = -4;g_pos.speedY = -4;walking = 1;}
+    if (Arena.keys && Arena.keys[83] && game == 1 && lives >= 0) {player.speedY = 4;shell.speedY = 4;bullet.speedY = 4;eyes.speedY = 4;eyes.speedY = 4;player_hit_box.speedY = 4;g_pos.speedY = 4;walking = 2;}
+    if (Arena.keys && Arena.keys[32] && game == 1 && gunner == 1 && bullet.distance == 0 && bullets == 1) {bullet.y = g_pos.y; bullet.x = g_pos.x; shootSound.play(); shooting = 1; document.getElementById("Ammo").innerText = ammo_amount - 1; ammo_amount = ammo_amount - 1;}
+    else if (Arena.keys && Arena.keys[32] && game == 1 && shotgun == 0 && bullet.distance == 0 && bullets == 0) {noAmmoSound.play();shooting = 1;}
+    else if (Arena.keys && Arena.keys[32] && game == 1 && gunner == 0 && shell.distance == 0 && shells == 1 && shotgun == 1) {shell.y = g_pos.y; shell.x = g_pos.x; shootSound.play(); s_shooting = 1;}
 
 
     if (walking == 1 && player.speedX == -4 || player.speedY == -4){
@@ -633,6 +764,14 @@ function updateGameArena() {
                        player.img = gunner_sprite_shoot;
                        }
 
+    if (shooting == 1 && bullets == 0){
+                        player.img = gunner_sprite_no_ammo;
+                        }
+
+    if (ammo_amount == 0){
+                        gunner = 0;
+                         }
+
     if (bullet.x != -80000) // super unnecessary number X)
         {
             bullet.distance -= 150;
@@ -640,6 +779,16 @@ function updateGameArena() {
                 {
                     bullet.distance = 0;
                     shooting = 0;
+                }
+        }
+
+    if (shell.x != -80000) // super unnecessary number X)
+        {
+            shell.distance -= 150;
+            if(shell.distance == -900)
+                {
+                    shell.distance = 0;
+                    s_shooting = 0;
                 }
         }
 
@@ -667,11 +816,11 @@ function updateGameArena() {
 
     // controls for foe
     // Uses numpad 8456 for movement and down arrow for fire
-    if (Arena.keys && Arena.keys[100] && lives2 >= 0) {enemy.speedX = -4; ebullet.speedX = -4;e_g_pos.speedX = -4; ewalking = 1;}
-    if (Arena.keys && Arena.keys[102] && lives2 >= 0) {enemy.speedX = 4; ebullet.speedX = 4;e_g_pos.speedX = 4;ewalking = 2;}
-    if (Arena.keys && Arena.keys[104] && lives2 >= 0) {enemy.speedY = -4; ebullet.speedY = -4;e_g_pos.speedY = -4;ewalking = 1;}
-    if (Arena.keys && Arena.keys[101] && lives2 >= 0) {enemy.speedY = 4; ebullet.speedY = 4;e_g_pos.speedY = 4;ewalking = 2;}
-    if (Arena.keys && Arena.keys[40]  && lives2 >= 0 && ebullet.distance == 0 && ebullets == 1) {ebullet.y = e_g_pos.y; ebullet.x = e_g_pos.x; shootSound.play();eshooting = 1; document.getElementById("Ammo2").innerText = eammo_amount - 1; eammo_amount = eammo_amount - 1;}
+    if (Arena.keys && Arena.keys[100] && game == 1 && lives2 >= 0) {enemy.speedX = -4; ebullet.speedX = -4;e_g_pos.speedX = -4; ewalking = 1;}
+    if (Arena.keys && Arena.keys[102] && game == 1  && lives2 >= 0) {enemy.speedX = 4; ebullet.speedX = 4;e_g_pos.speedX = 4;ewalking = 2;}
+    if (Arena.keys && Arena.keys[104] && game == 1 && lives2 >= 0) {enemy.speedY = -4; ebullet.speedY = -4;e_g_pos.speedY = -4;ewalking = 1;}
+    if (Arena.keys && Arena.keys[101] && game == 1 && lives2 >= 0) {enemy.speedY = 4; ebullet.speedY = 4;e_g_pos.speedY = 4;ewalking = 2;}
+    if (Arena.keys && Arena.keys[40] && game == 1  && lives2 >= 0 && ebullet.distance == 0 && ebullets == 1) {ebullet.y = e_g_pos.y; ebullet.x = e_g_pos.x; shootSound.play();eshooting = 1; document.getElementById("Ammo2").innerText = eammo_amount - 1; eammo_amount = eammo_amount - 1;}
 
     if (ewalking == 1 && enemy.speedX == -4 || enemy.speedY == -4){
                         enemy.img = gunner_sprite2_walk_1;
@@ -717,11 +866,14 @@ function updateGameArena() {
             ebullets = 1;
         }
 
-    // update positions4854848
+    // update positions
+    eyes.newPos();
+    eyes.update();
     player.newPos();
     player_hit_box.newPos();
     enemy.newPos();
     bullet.newPos();
+    shell.newPos();
     ebullet.newPos();
     e_g_pos.newPos();
     g_pos.newPos();
@@ -730,6 +882,7 @@ function updateGameArena() {
     player.update();
     player_hit_box.update();
     bullet.update();
+    shell.update();
     ebullet.update();
     laser.update();
     g_pos.update();
@@ -754,4 +907,8 @@ function updateGameArena() {
     life_box.update();
     ammo_box.newPos();
     ammo_box.update();
+
+    // weapons
+    shotgun_pickup.newPos();
+    shotgun_pickup.update();
 }
