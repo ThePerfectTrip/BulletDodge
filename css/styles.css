@@ -5,16 +5,24 @@ body {
 
 .press_enter    {
         font-family: "Russo One";
-        font-size: 50px;
+        font-size: 40px;
         color: white;
-        margin: auto;
         -webkit-text-stroke-width: 3px;
         -webkit-text-stroke-color: black;
         animation: blink 1s;
         animation-iteration-count: infinite;
+        padding-left: 0;
+        padding-right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        width: 1280px;
       }
 .h1 {
-        display: block;
+        padding-left: 0;
+        padding-right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        width: 1280px;
     }
 .h2    {
         display: none;
