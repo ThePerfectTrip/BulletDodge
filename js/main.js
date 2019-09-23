@@ -18,6 +18,7 @@ var lives;
 var lives2;
 var health_amount;
 var enemy_health;
+var shells_amount;
 var ammo_amount;
 var eammo_amount;
 
@@ -26,9 +27,12 @@ var ewalking;
 var walking;
 var game_over;
 
+var reloading;
+
 // sounds
 var bgAudio = undefined;
 let shootSound;
+let shotgunSound;
 let hurtSound;
 let laserSound;
 let healthSound;
@@ -73,7 +77,7 @@ function startGame() {
     g_pos = new component(5, 5,"rgba(0,255,0,0)", 228, 160);
     e_g_pos = new component(5, 5,"rgba(0,255,0,0)", 915, 480);
     bullet = new component(120, 2, "yellow", -120, -120, 0);
-    shell = new component(120, 2, "red", -120, -120, 0);
+    shell = new component(120, 8, "red", -120, -120, 0);
     ebullet = new component(120, 2, "yellow", -120, -120, 0);
     laser = new component(20, 660,"rgba(0,255,0,0.4)", -300, -300);
 
@@ -108,6 +112,14 @@ var Arena = {
         gunner_sprite_hurt.src = "media/player_1_r_with_gun_hurt.png";
         gunner_sprite_shoot_hurt = new Image();
         gunner_sprite_shoot_hurt.src = "media/player_1_r_with_gun_shoot_hurt.png";
+        shotgun_sprite_shoot = new Image();
+        shotgun_sprite = new Image();
+        shotgun_sprite.src = "media/player_1_r_with_s_gun.png";
+        shotgun_sprite_walk_1 = new Image();
+        shotgun_sprite_walk_1.src = "media/player_1_r_with_s_gun_walk_1.png";
+        shotgun_sprite_walk_2 = new Image();
+        shotgun_sprite_walk_2.src = "media/player_1_r_with_s_gun_walk_2.png"
+        shotgun_sprite_shoot.src = "media/player_1_r_with_s_gun_shoot.png"
         gunner_sprite2 = new Image();
         gunner_sprite2.src = "media/player_2_r_with_gun.png";
         gunner_sprite2_walk_1 = new Image();
@@ -123,6 +135,7 @@ var Arena = {
         health_amount = 100;
         enemy_health = 100;
         ammo_amount = 30;
+        shells_amount = 16;
         eammo_amount = 30;
         gunner = 1;
         shotgun = 0;
@@ -130,6 +143,7 @@ var Arena = {
         shells = 0;
         ebullets = 1;
         shooting = 0;
+        s_shooting = 0;
         eshooting = 0;
         no_bullets = 0;
         hurting = 0;
@@ -144,6 +158,7 @@ var Arena = {
         document.getElementById("h9").style.display = "none";
         document.getElementById("Ammo").innerText = ammo_amount;
         document.getElementById("Ammo2").innerText = eammo_amount;
+        document.getElementById("Shells").innerText = shells_amount;
         bgAudio = document.querySelector("#bgAudio");
         bgAudio.volume = 0.50;
         this.canvas.width = 1280;
@@ -162,8 +177,15 @@ var Arena = {
         })
 
     // Load Sounds
+
+    // rifle
     shootSound = new Howl({
 	        src: ['media/bullet_fire.mp3']
+});
+
+    // shotgun
+    shotgunSound = new Howl({
+	        src: ['media/s_blast.mp3']
 });
 
     // Reload
@@ -214,12 +236,14 @@ function shotgunPick(){
     if(shotgun == 0){
         shotgun_pickup.x = Math.floor(Math.random() * 1600) + 1;
         shotgun_pickup.y = Math.floor(Math.random() * 600) + 1;
+        player.img = shotgun_sprite;
         }
     else {
         shotgun_pickup.x = -300;
         shotgun_pickup.y = -300;
      }
 }
+
 
 // blinking eyes
 function eyesBlink() {
@@ -453,6 +477,7 @@ function setBoundaries(){
         shells = shells + 16;
         shotgun = 1;
         gunner = 0;
+        player.img = shotgun_sprite;
         shotgun_pickup.x = shotgun_pickup.x = -300;
         reloadSound.play();
     }
@@ -606,22 +631,30 @@ function setBoundaries(){
 
 function hitDetection (){
 
-    // enemy damage
+    // enemy damage from bullet
     if (enemy.x < bullet.x + bullet.width &&
         enemy.x + player.width > bullet.x &&
         enemy.y < bullet.y + bullet.height &&
         enemy.height + enemy.y > bullet.y) {
         hurtSound.play();
-        enemy_health = enemy_health - 1;
+        enemy_health = enemy_health - 2;
         enemy.x = enemy.x + 6;
         e_g_pos.x = e_g_pos.x + 6;
-        enemy.img = player2_hurt_sprite;
+    }
+    if (enemy.x < shell.x + shell.width &&
+        enemy.x + player.width > shell.x &&
+        enemy.y < shell.y + shell.height &&
+        enemy.height + enemy.y > shell.y) {
+        hurtSound.play();
+        enemy_health = enemy_health - 8;
+        enemy.x = enemy.x + 12;
+        e_g_pos.x = e_g_pos.x + 12;
     }
     else    {
             enemy.img = gunner_sprite2;
             }
         document.getElementById("ehealth").value = enemy_health;
-    if (enemy_health == 0)
+    if (enemy_health <= 0)
             {
                 enemyDie();
             }
@@ -645,7 +678,7 @@ function hitDetection (){
         player.y < ebullet.y + ebullet.height &&
         player.height + player.y > ebullet.y) {
         hurtSound.play();
-        health_amount = health_amount - 1;
+        health_amount = health_amount - 2;
         player.x = player.x - 6;
         hurting = 1;
         player_hit_box.x = player_hit_box.x - 6;
@@ -668,10 +701,14 @@ else   {
             document.getElementById("h6").style.display = "none";
             document.getElementById("h10").style.display = "none";
             document.getElementById("Ammo").style.display = "none";
+            document.getElementById("Shells").style.display = "none";
             document.getElementById("Lives").innerText = "0";  
             health_amount = 0;
+            eyes.x = -300;
+            eyes.y = -300;
             player.x = -300;
             player.y = -300;
+            gunner = 0;
         }
 }
 
@@ -701,6 +738,7 @@ document.getElementById("h10").style.display = "block";
 document.getElementById("h11").style.display = "block";
 document.getElementById("Ammo").style.display = "block";
 document.getElementById("Ammo2").style.display = "block";
+document.getElementById("Shells").style.display = "block";
 document.getElementById("Lives").style.display = "block";
 document.getElementById("Lives2").style.display = "block";
 document.getElementById("health").style.display = "block";
@@ -750,18 +788,49 @@ function updateGameArena() {
     if (Arena.keys && Arena.keys[83] && game == 1 && lives >= 0) {player.speedY = 4;shell.speedY = 4;bullet.speedY = 4;eyes.speedY = 4;eyes.speedY = 4;player_hit_box.speedY = 4;g_pos.speedY = 4;walking = 2;}
     if (Arena.keys && Arena.keys[32] && game == 1 && gunner == 1 && bullet.distance == 0 && bullets == 1) {bullet.y = g_pos.y; bullet.x = g_pos.x; shootSound.play(); shooting = 1; document.getElementById("Ammo").innerText = ammo_amount - 1; ammo_amount = ammo_amount - 1;}
     else if (Arena.keys && Arena.keys[32] && game == 1 && shotgun == 0 && bullet.distance == 0 && bullets == 0) {noAmmoSound.play();shooting = 1;}
-    else if (Arena.keys && Arena.keys[32] && game == 1 && gunner == 0 && shell.distance == 0 && shells == 1 && shotgun == 1) {shell.y = g_pos.y; shell.x = g_pos.x; shootSound.play(); s_shooting = 1;}
+    else if (Arena.keys && Arena.keys[32] && game == 1 && gunner == 0 && shell.distance == 0 && shells == 1 && shotgun == 1) {w_shotgun();}
 
 
-    if (walking == 1 && player.speedX == -4 || player.speedY == -4){
+function w_shotgun()
+            {
+                shell.y = g_pos.y; 
+                shell.x = g_pos.x; 
+                shotgunSound.play(); 
+                s_shooting = 1; 
+                document.getElementById("Shells").innerText = shells_amount - 1; 
+                shells_amount = shells_amount - 1
+            }
+
+
+    
+    // walking with rifle
+    if (walking == 1 && gunner == 1 && player.speedX == -4 || player.speedY == -4){
                         player.img = gunner_sprite_walk_1;
                        }
-    if (walking == 2 && player.speedX == 4 || player.speedY == 4){
+    if (walking == 2 && gunner == 1 && player.speedX == 4 || player.speedY == 4){
                         player.img = gunner_sprite_walk_2;
+                       }
+
+    // walking with shotgun
+    if (walking == 1 && gunner == 0 && shotgun == 1 && player.speedX == -4){
+                        player.img = shotgun_sprite_walk_1;
+                       }
+    if (walking == 2 && gunner == 0 && shotgun == 1 && player.speedX == 4){
+                        player.img = shotgun_sprite_walk_2;
+                       }
+
+    if (walking == 1 && gunner == 0 && shotgun == 1 && player.speedY == -4){
+                        player.img = shotgun_sprite_walk_1;
+                       }
+    if (walking == 2 && gunner == 0 && shotgun == 1 && player.speedY == 4){
+                        player.img = shotgun_sprite_walk_2;
                        }
 
     if (shooting == 1){
                        player.img = gunner_sprite_shoot;
+                       }
+    if (s_shooting == 1){
+                       player.img = shotgun_sprite_shoot;
                        }
 
     if (shooting == 1 && bullets == 0){
@@ -782,9 +851,10 @@ function updateGameArena() {
                 }
         }
 
+
     if (shell.x != -80000) // super unnecessary number X)
         {
-            shell.distance -= 150;
+            shell.distance -= 60;
             if(shell.distance == -900)
                 {
                     shell.distance = 0;
@@ -793,7 +863,7 @@ function updateGameArena() {
         }
 
     // change hud ammo color if getting low to dark red
-    if (ammo_amount == 15)
+    if (ammo_amount <= 15)
         {
             document.getElementById("Ammo").style.color = "#a81515";
         }
@@ -812,6 +882,30 @@ function updateGameArena() {
     if (ammo_amount > 0)
         {
             bullets = 1;
+        }
+
+    // change hud shells color if getting low to dark red
+    if (shells_amount <= 5)
+        {
+            document.getElementById("Shells").style.color = "#a81515";
+        }
+    // change hud shells color back to green 
+    if (shells_amount >= 10)
+        {
+            document.getElementById("Shells").style.color = "green";
+        }
+
+    // stop shooting if you run out of shells
+    if (shells_amount <= 0)
+        {
+            shells = 0;
+            gunner = 1;
+            shotgun = 0;
+        }
+    // start shooting again if you have shells
+    if (shells_amount > 0)
+        {
+            shells = 1;
         }
 
     // controls for foe
