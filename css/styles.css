@@ -92,6 +92,12 @@ body {
         top: 400px;
         left: 1618px;
     }
+.h12  {
+        display: none;
+        position: absolute;
+        top: 405px;
+        left: 1618px;
+    }
 .ammo_text    {
         display: none;
         font-family: "Russo One";
@@ -113,6 +119,17 @@ body {
         position: absolute;
         top: 355px;
         left: 1795px;
+      }
+.shells_text    {
+        display: none;
+        font-family: "Russo One";
+        font-size: 50px;
+        color: green;
+        -webkit-text-stroke-width: 4px;
+        -webkit-text-stroke-color: black;
+        position: absolute;
+        top: 410px;
+        left: 220px;
       }
 .l_text    {
         display: none;
